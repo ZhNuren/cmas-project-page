@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CMAS: Steering to the Point</title>
+<meta name="description" content="Cross-Modal Activation Steering (CMAS): steering vectors from the activation change a click causes, added at text-only inference. Five annotated images per class, no weight updates.">
+<meta name="color-scheme" content="light dark">
+<script>try{var t=localStorage.getItem('cmas-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<!-- Optional web fonts (the page falls back to system fonts offline) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,650;8..60,700&display=swap">
+<link rel="stylesheet" href="assets/css/site.css?v=20261125">
+<link rel="icon" href="assets/img/click_icon.svg" type="image/svg+xml">
+</head>
+<body>
+
+<div class="topbar"><div class="wrap">
+  <a class="brand" href="#top">CMAS</a>
+  <nav aria-label="Sections">
+    <a href="#problem">Problem</a><a href="#method">Method</a><a href="#results">Results</a>
+    <a href="#examples">Examples</a><a href="#demo">Demo</a><a href="#bibtex-sec">BibTeX</a>
+  </nav>
+  <button class="theme-btn" id="theme-btn" type="button" aria-label="Toggle theme"></button>
+</div></div>
+
+<header class="hero" id="top"><div class="wrap">
+  <h1>Steering to the Point: <span class="accent">Cross-Modal Activation Steering</span> for Few-Shot Adaptation of Promptable Segmentation Models</h1>
+
+  <!-- AUTHORS: edit names / affiliation here (also in the BibTeX block below) -->
+  <p class="authors">
+    <a href="mailto:nuren.zhaksylyk@cispa.de" title="nuren.zhaksylyk@cispa.de">Nuren Zhaksylyk</a><span class="sep">·</span>
+    <a href="mailto:philipp.christmann@cispa.de" title="philipp.christmann@cispa.de">Philipp Christmann</a><span class="sep">·</span>
+    <a href="mailto:fritz@cispa.de" title="fritz@cispa.de">Mario Fritz</a>
+  </p>
+  <p class="affil">CISPA Helmholtz Center for Information Security</p>
+  
+  <p class="venue">under review</p>
+  
+
+  <div class="buttons">
+    
+    <a class="btn" href="#" aria-disabled="true" title="arXiv link: coming soon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg>
+      Paper <span class="soon">(arXiv soon)</span></a>
+    <a class="btn ghost" href="https://github.com/ZhNuren/cmas-release" title="Code on GitHub">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"/></svg>
+      Code</a>
+    <a class="btn ghost" href="#bibtex-sec">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 4h9l3 3v13H6z"/><path d="M9 10h6M9 14h6"/></svg>
+      BibTeX</a>
+  </div>
+</div></header>
+
+<section id="tldr"><div class="wrap">
+  <div class="teaser-grid">
+    <div>
+      <p class="tldr"><b>Overview</b> &nbsp;Text prompts often fail under distribution shift, while the same model given one extra click is usually right.
+      CMAS records how a click changes the model's activations on five annotated images per class, and adds that change as a
+      <i>cross-modal steering vector</i> at <b>text-only</b> inference. No weights are updated, and no clicks are needed at test time.</p>
+      <p class="lead">Promptable segmentation models can identify and delineate objects from text descriptions alone. However, even domain-adapted
+      models remain vulnerable to seemingly minor distribution shifts (e.g., different imaging protocols or target structures).
+      With only five annotated images, CMAS improves performance by up to <b>27.1 Dice points</b> across six datasets compared to text-only inference.</p>
+      <details class="abstract">
+        <summary>Full abstract</summary>
+        <p>Promptable segmentation models can identify and delineate objects from text descriptions alone. However, even domain-adapted models
+        remain vulnerable to seemingly minor distribution shifts (e.g., different imaging protocols or target structures). We first investigate
+        segmentation errors under such distribution shifts and find that they are often subtle, arising from calibration errors or slight
+        misinterpretations of text prompts. Our analysis shows that, in many cases, a single click is sufficient to correct these errors,
+        demonstrating how <i>cross-modal guidance</i> can overcome limitations of text-only prompting. Based on these observations, we introduce
+        <b>C</b>ross-<b>M</b>odal <b>A</b>ctivation <b>S</b>teering (CMAS) for few-shot adaptation of promptable segmentation models. Rather than
+        introducing the cost and burden of additional expert clicks at inference time, we derive <i>cross-modal steering vectors</i> from activation
+        differences induced by adding a click to the text prompt. The inference itself remains text-only, and applies the derived steering vectors
+        to the model's activations. With only five annotated images, CMAS improves performance by up to 27.1 Dice points across six datasets compared
+        to text-only inference. We demonstrate that cross-modal steering generalizes across datasets and models, supports bidirectional transfer
+        between text and point prompts, and enables test-time adaptation. Together, these results establish cross-modal steering as a general
+        paradigm for adapting promptable segmentation models without parameter updates.</p>
+      </details>
+    </div>
+    <figure>
+      <div class="fig"><picture><source srcset="assets/img/teaser.webp" type="image/webp">
+        <img src="assets/img/teaser.png" width="1400" height="1314" alt="Three rows. Text prompt 'left gluteus medius': Medical-SAM3 misses the muscle. Text prompt plus one click: correct. CMAS: the activation difference between text-plus-click and text-only on annotated slices becomes a steering vector; with it, text-only inference without a click is correct."></picture></div>
+      <figcaption><b>Figure 1.</b> Overview of <i>Cross-Modal Activation Steering</i> (CMAS), providing the guidance of a click for text-only inference.</figcaption>
+    </figure>
+  </div>
+</div></section>
+
+<section id="problem" class="alt"><div class="wrap">
+  <h2><span class="kicker">The problem</span>Text alone misses; one click recovers most of it</h2>
+  <p class="narrow">We decompose the Dice deficit of text-only prompting into five failure modes (hierarchical attribution: presence errors, then
+  semantic mismatch, then mask quality; together they sum to 1 with Dice). <b>Presence errors account for a substantial fraction of the loss</b>:
+  missed structures alone cost 0.419 Dice on ToothFairy2, 0.573 on MoCA-Mask and 0.447 on iSAID-5i. On RAOS and MRISegmenter, <b>semantic
+  mismatches</b> (e.g. the left instead of the right femoral head) cost 0.102 and 0.109. Adding a <b>single random click</b> inside the target
+  improves Dice on all six datasets: the knowledge is in the model, but text alone does not reach it.</p>
+  <p class="narrow">Splitting the one-click result the same way shows <b>which errors the click removes</b>: mostly presence false negatives
+  (&minus;0.352 on MoCA-Mask, &minus;0.291 on ToothFairy2, &minus;0.269 on LVIS-92i, &minus;0.222 on iSAID-5i), plus semantic mismatches on
+  MRISegmenter (0.109&nbsp;&rarr;&nbsp;0.054) and RAOS (0.102&nbsp;&rarr;&nbsp;0.084). Presence false positives, on slices without the
+  structure where no click is given, barely change.</p>
+  <div class="legend" aria-hidden="true">
+    <span><i style="background:var(--fm-dice)"></i>Dice</span>
+    <span><i style="background:var(--fm-pfn)"></i>Presence false-negative</span>
+    <span><i style="background:var(--fm-pfp)"></i>Presence false-positive</span>
+    <span><i style="background:var(--fm-sem)"></i>Semantic mismatch</span>
+    <span><i style="background:var(--fm-fna)"></i>Mask FN area</span>
+    <span><i style="background:var(--fm-fpa)"></i>Mask FP area</span>
+  </div>
+  <div class="chart" id="chart-failure"></div>
+  <details class="data">
+    <summary>Data table (paper Table 1 + split of the one-click result)</summary>
+    <div class="tbl" style="margin-top:8px"><table>
+      <thead><tr><th></th><th>RAOS</th><th>ToothFairy2</th><th>MRISeg.</th><th>MoCA-Mask</th><th>LVIS-92i</th><th>iSAID-5i</th></tr></thead>
+      <tbody>
+        <tr><td>Text prompt (Dice)</td><td>0.553</td><td>0.016</td><td>0.463</td><td>0.351</td><td>0.545</td><td>0.389</td></tr>
+        <tr><td>Presence FN</td><td>+0.045</td><td>+0.419</td><td>+0.085</td><td>+0.573</td><td>+0.352</td><td>+0.447</td></tr>
+        <tr><td>Presence FP</td><td>+0.180</td><td>+0.404</td><td>+0.248</td><td>NA</td><td>NA</td><td>NA</td></tr>
+        <tr><td>Semantic mismatch</td><td>+0.102</td><td>+0.036</td><td>+0.109</td><td>NA</td><td>+0.019</td><td>+0.040</td></tr>
+        <tr><td>FN area</td><td>+0.105</td><td>+0.080</td><td>+0.064</td><td>+0.022</td><td>+0.049</td><td>+0.066</td></tr>
+        <tr><td>FP area</td><td>+0.013</td><td>+0.045</td><td>+0.029</td><td>+0.053</td><td>+0.036</td><td>+0.058</td></tr>
+        <tr><td><b>Cross-modal guidance</b> (text + 1 click)</td><td>0.595±.013</td><td>0.202±.012</td><td>0.562±.015</td><td>0.636±.059</td><td>0.771±.049</td><td>0.568±.079</td></tr>
+        <tr class="grp"><td colspan="7">Dice lost with text + 1 click (change vs. text prompt)</td></tr>
+        <tr><td>&nbsp;&nbsp;Presence FN</td><td>+0.017 <span class="sig pos">(&minus;.028)</span></td><td>+0.128 <span class="sig pos">(&minus;.291)</span></td><td>+0.034 <span class="sig pos">(&minus;.051)</span></td><td>+0.221 <span class="sig pos">(&minus;.352)</span></td><td>+0.082 <span class="sig pos">(&minus;.269)</span></td><td>+0.225 <span class="sig pos">(&minus;.222)</span></td></tr>
+        <tr><td>&nbsp;&nbsp;Presence FP</td><td>+0.180 <span class="sig pos">(&minus;.001)</span></td><td>+0.396 <span class="sig pos">(&minus;.008)</span></td><td>+0.242 <span class="sig pos">(&minus;.006)</span></td><td>NA</td><td>NA</td><td>NA</td></tr>
+        <tr><td>&nbsp;&nbsp;Semantic mismatch</td><td>+0.084 <span class="sig pos">(&minus;.019)</span></td><td>+0.062 <span class="sig neg">(+.026)</span></td><td>+0.054 <span class="sig pos">(&minus;.056)</span></td><td>NA</td><td>+0.026 <span class="sig neg">(+.008)</span></td><td>+0.050 <span class="sig neg">(+.010)</span></td></tr>
+        <tr><td>&nbsp;&nbsp;FN area</td><td>+0.112 <span class="sig neg">(+.007)</span></td><td>+0.186 <span class="sig neg">(+.106)</span></td><td>+0.075 <span class="sig neg">(+.011)</span></td><td>+0.061 <span class="sig neg">(+.039)</span></td><td>+0.065 <span class="sig neg">(+.017)</span></td><td>+0.087 <span class="sig neg">(+.021)</span></td></tr>
+        <tr><td>&nbsp;&nbsp;FP area</td><td>+0.012 <span class="sig pos">(&minus;.002)</span></td><td>+0.026 <span class="sig pos">(&minus;.019)</span></td><td>+0.033 <span class="sig neg">(+.004)</span></td><td>+0.082 <span class="sig neg">(+.029)</span></td><td>+0.055 <span class="sig neg">(+.019)</span></td><td>+0.070 <span class="sig neg">(+.012)</span></td></tr>
+      </tbody></table></div>
+    <p class="tcap">FN/FP: false-negative/positive; NA: not applicable. Cross-modal guidance is averaged over three random clicks (± standard deviation).
+    Its split uses the same per-volume / per-video / per-episode / per-pair aggregation as the text row, averaged over the three clicks
+    (each click's rows sum to 1; the split varies by at most 0.008 between clicks). Medical: a click is given only on slices that contain the
+    structure, text alone elsewhere. Medical datasets: Medical-SAM3; others: SAM3.</p>
+  </details>
+</div></section>
+
+<section id="method"><div class="wrap">
+  <h2><span class="kicker">Method</span>Cross-Modal Activation Steering</h2>
+  <p class="narrow">CMAS transfers the corrective effect of spatial guidance to text-only prompting. From a few annotated examples it extracts
+  cross-modal steering vectors from the activation changes induced by corrective clicks, and applies them to the frozen model, without
+  requiring spatial guidance at inference time.</p>
+  <figure>
+    <div class="fig"><picture><source srcset="assets/img/method.webp" type="image/webp">
+      <img src="assets/img/method.png" width="1800" height="750" alt="Three panels: (1) prompt optimisation of the point embedding with a soft-Dice loss; (2) cross-modal steering: activations with and without the optimised click, their difference averaged over the B annotated slices of a class gives V(c); (3) auto-steering configuration: leave-one-out choice of the steering site and alpha = rms(h)/rms(V)."></picture></div>
+    <figcaption><b>Figure 2. Overview of CMAS.</b> (1) Prompt embeddings are optimised using annotated examples. (2) Cross-modal steering vectors are
+    derived from activation differences with and without additional modality guidance, and averaged across examples. (3) The steering site and
+    strength are configured automatically. At inference, the resulting vectors steer the frozen model without requiring the additional modality.</figcaption>
+  </figure>
+  <ol class="steps">
+    <li><h4>Optimise the click</h4>For each annotated mask, sample a positive click and optimise its point-token and geometry-CLS embeddings
+      (Adam, 40 steps, soft Dice loss). Model weights stay frozen; the optimised embedding need not be a valid point.</li>
+    <li><h4>Activation difference</h4>At a site <span class="eq">ℓ</span>, record <span class="eq">v<sup>(i)</sup> = H<sub>ℓ</sub>(x<sub>+</sub>+δ*) − H<sub>ℓ</sub>(x)</span>:
+      text + optimised click minus text only. Average over the class's examples: <span class="eq">V<sub>ℓ</sub>(c)</span>, the steering vector.</li>
+    <li><h4>Auto-Steering</h4>Pick the site by leave-one-out validation on the annotated examples (54 candidate sites in SAM3; steer only if the gain
+      is positive). Strength by magnitude matching, <span class="eq">α = rms(h<sub>ℓ</sub>) / rms(V<sub>ℓ</sub>)</span>: no search.</li>
+    <li><h4>Steer text-only inference</h4>At test time, prompt with text only and add <span class="eq">α V<sub>ℓ</sub>(c)</span> to the activation at
+      <span class="eq">ℓ</span>: a single addition, negligible overhead, and the model stays usable interactively.</li>
+  </ol>
+</div></section>
+
+<section id="results" class="alt"><div class="wrap">
+  <h2><span class="kicker">Results</span>Five annotated images, six datasets</h2>
+  <div class="stats">
+    <div class="stat"><div class="v">+5.0–27.1</div><div class="k">Dice points over text-only prompting, on all six datasets</div></div>
+    <div class="stat"><div class="v">0</div><div class="k">model weights updated; inference stays text-only</div></div>
+    <div class="stat"><div class="v">20× / 220×</div><div class="k">less adaptation compute than LoRA on RAOS / MoCA-Mask (PFLOPs)</div></div>
+    <div class="stat"><div class="v">4.1–8.4 GiB</div><div class="k">peak GPU memory to build CMAS, vs. 8.1–22.3 GiB for LoRA</div></div>
+  </div>
+
+  <h3>Text-only inference vs. CMAS</h3>
+  <div class="legend" aria-hidden="true"><span><i class="dot" style="background:var(--card);border:2px solid var(--base)"></i>text-only</span>
+    <span><i class="dot" style="background:var(--acc)"></i>CMAS (click &rarr; text), label: gain in Dice points</span></div>
+  <div class="chart" id="chart-dumbbell"></div>
+
+  <h3>Comparison with few-shot adaptation baselines</h3>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>RAOS</th><th>ToothFairy2</th><th>MRISegmenter</th><th>MoCA-Mask</th><th>LVIS-92i</th><th>iSAID-5i</th></tr></thead>
+    <tbody>
+      <tr><td>Default (text prompt)</td><td>0.553</td><td>0.016</td><td>0.463</td><td>0.351</td><td>0.545</td><td>0.389</td></tr>
+      <tr class="grp"><td colspan="7">Prompt learning</td></tr>
+      <tr><td>Geometry embedding</td><td>0.627<span class="sig">↑</span></td><td>0.163<span class="sig">↑</span></td><td>0.462</td><td>0.351</td><td>0.548</td><td>0.403<span class="sig">↑</span></td></tr>
+      <tr><td>FS-CPL</td><td>0.626<span class="sig">↑</span></td><td>0.113<span class="sig">↑</span></td><td>0.487<span class="sig">↑</span></td><td>0.392</td><td>0.441<span class="sig">↓</span></td><td>0.278<span class="sig">↓</span></td></tr>
+      <tr><td>M2C</td><td>0.570<span class="sig">↑</span></td><td>0.236<span class="sig">↑</span></td><td>0.458</td><td>0.563<span class="sig">↑</span></td><td>0.740<span class="sig">↑</span></td><td>0.673<span class="sig">↑</span></td></tr>
+      <tr class="grp"><td colspan="7">Reference-based</td></tr>
+      <tr><td>PerSAM (original)</td><td>0.425<span class="sig">↓</span></td><td>0.109<span class="sig">↑</span></td><td>0.453</td><td>0.379</td><td>0.642<span class="sig">↑</span></td><td>0.539<span class="sig">↑</span></td></tr>
+      <tr><td>PerSAM (enhanced)</td><td>0.548<span class="sig">↓</span></td><td>0.101<span class="sig">↑</span></td><td>0.493<span class="sig">↑</span></td><td>0.395</td><td>0.637<span class="sig">↑</span></td><td>0.521<span class="sig">↑</span></td></tr>
+      <tr class="grp"><td colspan="7">Fine-tuning</td></tr>
+      <tr><td>LoRA</td><td>0.593<span class="sig">↑</span></td><td><u>0.287</u><span class="sig">↑</span></td><td>0.490<span class="sig">↑</span></td><td><b>0.639</b><span class="sig">↑</span></td><td><u>0.755</u><span class="sig">↑</span></td><td><b>0.721</b><span class="sig">↑</span></td></tr>
+      <tr class="grp"><td colspan="7">Re-scoring</td></tr>
+      <tr><td>Global threshold</td><td>0.520<span class="sig">↓</span></td><td>0.031<span class="sig">↑</span></td><td>0.435<span class="sig">↓</span></td><td>0.267<span class="sig">↓</span></td><td>0.602<span class="sig">↑</span></td><td>0.435<span class="sig">↑</span></td></tr>
+      <tr><td>Per-class threshold</td><td>0.531<span class="sig">↓</span></td><td>0.035<span class="sig">↑</span></td><td>0.434<span class="sig">↓</span></td><td>0.267<span class="sig">↓</span></td><td>0.606<span class="sig">↑</span></td><td>0.436<span class="sig">↑</span></td></tr>
+      <tr><td>PrAda</td><td>0.641<span class="sig">↑</span></td><td>0.062<span class="sig">↑</span></td><td><u>0.534</u><span class="sig">↑</span></td><td>0.634<span class="sig">↑</span></td><td>0.388<span class="sig">↓</span></td><td>0.219<span class="sig">↓</span></td></tr>
+      <tr class="grp"><td colspan="7">Steering</td></tr>
+      <tr><td>Intra-modal steering</td><td>0.630<span class="sig">↑</span></td><td>0.131<span class="sig">↑</span></td><td>0.434<span class="sig">↓</span></td><td>0.557<span class="sig">↑</span></td><td>0.580<span class="sig">↑</span></td><td>0.488<span class="sig">↑</span></td></tr>
+      <tr class="ours"><td>CMAS (ours)</td><td><u>0.642</u><span class="sig">↑</span></td><td>0.132<span class="sig">↑</span></td><td>0.513<span class="sig">↑</span></td><td>0.622<span class="sig">↑</span></td><td>0.657<span class="sig">↑</span></td><td>0.523<span class="sig">↑</span></td></tr>
+      <tr class="grp"><td colspan="7">Hybrid</td></tr>
+      <tr class="ours"><td>LoRA + CMAS</td><td>0.634<span class="sig">↑</span></td><td><b>0.291</b><span class="sig">↑</span></td><td>0.507<span class="sig">↑</span></td><td><u>0.638</u><span class="sig">↑</span></td><td><b>0.759</b><span class="sig">↑</span></td><td><u>0.718</u><span class="sig">↑</span></td></tr>
+      <tr class="ours"><td>PrAda + CMAS</td><td><b>0.658</b><span class="sig">↑</span></td><td>0.117<span class="sig">↑</span></td><td><b>0.549</b><span class="sig">↑</span></td><td>0.625<span class="sig">↑</span></td><td>0.454<span class="sig">↓</span></td><td>0.222<span class="sig">↓</span></td></tr>
+    </tbody></table></div>
+  <p class="tcap">Dice, five annotated images per class (paper, main comparison table). Medical datasets: Medical-SAM3; others: SAM3. <b>Bold</b>: best, <u>underlined</u>: second best.
+  ↑/↓: significantly better/worse than the text prompt (paired Wilcoxon, p&lt;0.05). LoRA and M2C are stronger on the natural-image datasets, which
+  do not require the model to refrain from predictions; on the medical volumes, where a class is absent from many slices, CMAS is competitive
+  without updating weights, and combining it with PrAda gives the best RAOS and MRISegmenter results.</p>
+
+  <h3 id="errsplit">Where each method recovers Dice</h3>
+  <p class="narrow">The same five-way split of the Dice deficit, for text-only prompting and three adaptation methods (five annotated images
+  per class). On the natural-image datasets, <b>CMAS primarily reduces missed objects</b>: presence FN drops from 0.573 to 0.089 on MoCA-Mask,
+  from 0.352 to 0.165 on LVIS-92i and from 0.447 to 0.242 on iSAID-5i. On RAOS the largest improvement comes from fewer <b>semantic
+  mismatches</b> (0.102&nbsp;&rarr;&nbsp;0.045), mostly left/right confusions such as the femoral heads. Correcting one failure mode can
+  introduce another: on ToothFairy2, newly found structures are often assigned to the wrong tooth (semantic mismatch 0.036&nbsp;&rarr;&nbsp;0.157),
+  as with LoRA (0.178) and M2C (0.187).</p>
+  <p class="narrow"><b>LoRA removes almost all missed objects but adds false-positive presence predictions</b> on the medical volumes
+  (RAOS 0.180&nbsp;&rarr;&nbsp;0.227, MRISegmenter 0.248&nbsp;&rarr;&nbsp;0.366, vs. 0.259 with CMAS). M2C behaves like LoRA, except on
+  MoCA-Mask, where it still misses many objects (presence FN 0.274). Hover a segment for its value and its change vs. the text prompt.</p>
+  <div class="legend" aria-hidden="true">
+    <span><i style="background:var(--fm-dice)"></i>Dice</span>
+    <span><i style="background:var(--fm-pfn)"></i>Presence false-negative</span>
+    <span><i style="background:var(--fm-pfp)"></i>Presence false-positive</span>
+    <span><i style="background:var(--fm-sem)"></i>Semantic mismatch</span>
+    <span><i style="background:var(--fm-fna)"></i>Mask FN area</span>
+    <span><i style="background:var(--fm-fpa)"></i>Mask FP area</span>
+  </div>
+  <div class="chart" id="chart-errsplit"></div>
+  <details class="data">
+    <summary>Data table (supplementary Tables S6 and S7)</summary>
+    <div class="tbl" style="margin-top:8px"><table>
+      <thead><tr><th></th><th colspan="4">RAOS</th><th colspan="4">ToothFairy2</th><th colspan="4">MRISeg.</th></tr>
+        <tr><th></th><th>Text</th><th>CMAS</th><th>LoRA</th><th>M2C</th><th>Text</th><th>CMAS</th><th>LoRA</th><th>M2C</th><th>Text</th><th>CMAS</th><th>LoRA</th><th>M2C</th></tr></thead>
+      <tbody>
+        <tr><td><b>Dice</b></td><td>0.553</td><td>0.642</td><td>0.593</td><td>0.570</td><td>0.016</td><td>0.132</td><td>0.287</td><td>0.236</td><td>0.464</td><td>0.513</td><td>0.490</td><td>0.458</td></tr>
+        <tr><td>Presence FN</td><td>0.045</td><td>0.031</td><td>0.014</td><td>0.018</td><td>0.419</td><td>0.269</td><td>0.035</td><td>0.047</td><td>0.085</td><td>0.055</td><td>0.021</td><td>0.031</td></tr>
+        <tr><td>Presence FP</td><td>0.180</td><td>0.181</td><td>0.227</td><td>0.272</td><td>0.404</td><td>0.353</td><td>0.457</td><td>0.459</td><td>0.248</td><td>0.259</td><td>0.366</td><td>0.340</td></tr>
+        <tr><td>Semantic mismatch</td><td>0.102</td><td>0.045</td><td>0.056</td><td>0.044</td><td>0.036</td><td>0.157</td><td>0.178</td><td>0.187</td><td>0.109</td><td>0.076</td><td>0.045</td><td>0.084</td></tr>
+        <tr><td>FN area</td><td>0.105</td><td>0.085</td><td>0.089</td><td>0.080</td><td>0.080</td><td>0.055</td><td>0.027</td><td>0.040</td><td>0.064</td><td>0.064</td><td>0.055</td><td>0.063</td></tr>
+        <tr><td>FP area</td><td>0.013</td><td>0.015</td><td>0.020</td><td>0.016</td><td>0.045</td><td>0.033</td><td>0.016</td><td>0.030</td><td>0.029</td><td>0.032</td><td>0.023</td><td>0.023</td></tr>
+      </tbody></table></div>
+    <div class="tbl" style="margin-top:8px"><table>
+      <thead><tr><th></th><th colspan="4">MoCA-Mask</th><th colspan="4">LVIS-92i</th><th colspan="4">iSAID-5i</th></tr>
+        <tr><th></th><th>Text</th><th>CMAS</th><th>LoRA</th><th>M2C</th><th>Text</th><th>CMAS</th><th>LoRA</th><th>M2C</th><th>Text</th><th>CMAS</th><th>LoRA</th><th>M2C</th></tr></thead>
+      <tbody>
+        <tr><td><b>Dice</b></td><td>0.351</td><td>0.622</td><td>0.639</td><td>0.563</td><td>0.545</td><td>0.657</td><td>0.755</td><td>0.740</td><td>0.389</td><td>0.523</td><td>0.721</td><td>0.673</td></tr>
+        <tr><td>Presence FN</td><td>0.573</td><td>0.089</td><td>0.100</td><td>0.274</td><td>0.352</td><td>0.165</td><td>0.029</td><td>0.065</td><td>0.447</td><td>0.242</td><td>0.009</td><td>0.060</td></tr>
+        <tr><td>Semantic mismatch</td><td>NA</td><td>NA</td><td>NA</td><td>NA</td><td>0.019</td><td>0.044</td><td>0.045</td><td>0.037</td><td>0.040</td><td>0.071</td><td>0.068</td><td>0.062</td></tr>
+        <tr><td>FN area</td><td>0.022</td><td>0.143</td><td>0.088</td><td>0.060</td><td>0.049</td><td>0.061</td><td>0.081</td><td>0.085</td><td>0.066</td><td>0.084</td><td>0.148</td><td>0.132</td></tr>
+        <tr><td>FP area</td><td>0.053</td><td>0.147</td><td>0.174</td><td>0.103</td><td>0.035</td><td>0.073</td><td>0.090</td><td>0.073</td><td>0.058</td><td>0.080</td><td>0.054</td><td>0.073</td></tr>
+      </tbody></table></div>
+    <p class="tcap">Dice and the Dice lost to each failure mode (lower is better); each column sums to 1 (up to rounding). NA: not applicable
+    (natural images: the class is present in every frame or query, so no presence FP; MoCA-Mask has one class, so no semantic mismatch).
+    The medical text-prompt Dice is the per-volume split mean (MRISegmenter 0.464 vs. 0.463 in the main table, rounding).
+    Medical datasets: Medical-SAM3; others: SAM3.</p>
+  </details>
+
+  <h3 id="budget">Annotation budget</h3>
+  <p class="narrow">Test Dice for 3 to 20 annotated examples per class. CMAS is competitive with only three examples; PrAda + CMAS is best on RAOS,
+  and LoRA is strong on MoCA-Mask. Hover or tab through a budget to compare all methods; click a legend entry to hide or show it.</p>
+  <div class="legend" id="budget-legend" role="group" aria-label="Show or hide methods"></div>
+  <div class="budget-grid">
+    <div class="chart" id="chart-budget-raos"></div>
+    <div class="chart" id="chart-budget-moca"></div>
+  </div>
+  <details class="data">
+    <summary>Data table (supplementary Figure S1)</summary>
+    <div class="tbl" style="margin-top:8px"><table>
+      <thead><tr><th>RAOS (annotated volumes; official Dice, 67 test volumes)</th><th>3</th><th>5</th><th>7</th><th>10</th><th>20</th></tr></thead>
+      <tbody>
+        <tr><td>Default (text prompt)</td><td>0.553</td><td>0.553</td><td>0.553</td><td>0.553</td><td>0.553</td></tr>
+        <tr><td>LoRA</td><td>0.598</td><td>0.593</td><td>0.601</td><td>0.594</td><td>0.581</td></tr>
+        <tr><td>PrAda</td><td>0.617</td><td>0.641</td><td>0.645</td><td>0.637</td><td>0.653</td></tr>
+        <tr class="ours"><td>CMAS (ours)</td><td>0.636</td><td>0.642</td><td>0.642</td><td>0.647</td><td>0.647</td></tr>
+        <tr class="ours"><td>LoRA + CMAS</td><td>0.602</td><td>0.634</td><td>0.622</td><td>0.584</td><td>0.602</td></tr>
+        <tr class="ours"><td>PrAda + CMAS</td><td>0.619</td><td>0.658</td><td>0.664</td><td>0.670</td><td>0.671</td></tr>
+      </tbody></table></div>
+    <div class="tbl" style="margin-top:8px"><table>
+      <thead><tr><th>MoCA-Mask (annotated frames; video-average Dice@0.5, 16 test videos)</th><th>3</th><th>5</th><th>7</th><th>10</th><th>20</th></tr></thead>
+      <tbody>
+        <tr><td>Default (text prompt)</td><td>0.351</td><td>0.351</td><td>0.351</td><td>0.351</td><td>0.351</td></tr>
+        <tr><td>LoRA</td><td>0.614</td><td>0.639</td><td>0.646</td><td>0.689</td><td>0.662</td></tr>
+        <tr><td>PrAda</td><td>0.538</td><td>0.634</td><td>0.634</td><td>0.640</td><td>0.650</td></tr>
+        <tr class="ours"><td>CMAS (ours)</td><td>0.613</td><td>0.622</td><td>0.611</td><td>0.628</td><td>0.634</td></tr>
+        <tr class="ours"><td>LoRA + CMAS</td><td>0.585</td><td>0.638</td><td>0.608</td><td>0.686</td><td>0.520</td></tr>
+        <tr class="ours"><td>PrAda + CMAS</td><td>0.608</td><td>0.625</td><td>0.631</td><td>0.656</td><td>0.673</td></tr>
+      </tbody></table></div>
+    <p class="tcap">Dashed lines with hollow markers: hybrids. Dotted line: text-only default. Medical: Medical-SAM3; MoCA-Mask: SAM3.</p>
+  </details>
+
+  <h3 id="perorgan">Per-organ gains on RAOS: CMAS and PrAda are complementary</h3>
+  <p class="narrow">CMAS and PrAda improve different organs. CMAS gives larger gains on the gallbladder (+0.075 vs. +0.010) and the rectum
+  (+0.048 vs. &minus;0.004); PrAda does better on the prostate (+0.080 vs. +0.018) and the esophagus (+0.073 vs. +0.006). Their combination keeps the
+  large gains on the femoral heads and further improves the bladder (+0.170), although the gains on the gallbladder and rectum are lost; the colon is
+  the only organ where it clearly falls below the text prompt (&minus;0.042). Overall RAOS Dice: text 0.553, CMAS 0.642, PrAda 0.641,
+  PrAda + CMAS 0.658 (five annotated volumes). Hover or tab through an organ for all values; click a legend entry to hide or show it.</p>
+  <div class="legend" id="perorgan-legend" role="group" aria-label="Show or hide methods"></div>
+  <div class="chart chart-card" id="chart-perorgan"></div>
+  <details class="data">
+    <summary>Data table (supplementary Figure S5)</summary>
+    <div class="tbl" style="margin-top:8px"><table>
+      <thead><tr><th>Organ (sorted by CMAS gain)</th><th>Text prompt</th><th>CMAS (ours)</th><th>PrAda</th><th>PrAda + CMAS</th></tr></thead>
+      <tbody id="perorgan-tbody"></tbody></table></div>
+    <p class="tcap">Per-organ mean official Dice over the 67 RAOS test volumes, five annotated volumes per class; in brackets the gain over the
+    text prompt. Medical-SAM3.</p>
+  </details>
+
+  <div class="blocks">
+    <div class="block">
+      <h3>Absent classes: fewer false positives</h3>
+      <p>Few-shot adaptation improves present classes at the cost of predicting absent ones. With challenging negative prompts, LoRA keeps only
+      16.3% correct empty predictions on iSAID-5i; CMAS retains 84.5% (LVIS-92i) and 78.6% (iSAID-5i).</p>
+      <div class="tbl"><table>
+        <thead><tr><th></th><th>LVIS present</th><th>present (top-1)</th><th>absent</th><th>iSAID present</th><th>present (top-1)</th><th>absent</th></tr></thead>
+        <tbody>
+          <tr><td>M2C</td><td>81.3</td><td>81.8</td><td>54.9</td><td>69.9</td><td>74.4</td><td>48.0</td></tr>
+          <tr><td>LoRA</td><td><b>83.9</b></td><td><b>84.0</b></td><td>36.6</td><td><b>80.3</b></td><td><b>80.3</b></td><td>16.3</td></tr>
+          <tr class="ours"><td>CMAS</td><td>79.2</td><td>83.7</td><td><b>84.5</b></td><td>46.4</td><td>64.3</td><td><b>78.6</b></td></tr>
+        </tbody></table></div>
+      <p class="tcap">In %. Top-1: Dice when keeping the highest-scoring mask even below the confidence threshold. Absent: correct empty predictions.</p>
+    </div>
+    <div class="block">
+      <h3>Reverse direction: text &rarr; click</h3>
+      <p>Steering vectors derived from <i>text</i> guidance improve <b>click-only</b> inference on five of six datasets, e.g. ToothFairy2 +10.9 and
+      RAOS +5.3 Dice points. MoCA-Mask is the exception (&minus;6.7): there, even oracle text guidance does not help click-only inference.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Click-only</th><th>RAOS</th><th>TF2</th><th>MRISeg.</th><th>MoCA</th><th>LVIS</th><th>iSAID</th></tr></thead>
+        <tbody>
+          <tr><td>Default</td><td>0.692</td><td>0.375</td><td>0.640</td><td><b>0.659</b></td><td>0.679</td><td>0.562</td></tr>
+          <tr class="ours"><td>CMAS</td><td><b>0.745</b></td><td><b>0.484</b></td><td><b>0.680</b></td><td>0.592</td><td><b>0.697</b></td><td><b>0.593</b></td></tr>
+          <tr><td>&Delta;</td><td class="pos">+0.053</td><td class="pos">+0.109</td><td class="pos">+0.040</td><td class="neg">&minus;0.067</td><td class="pos">+0.018</td><td class="pos">+0.031</td></tr>
+        </tbody></table></div>
+    </div>
+    <div class="block">
+      <h3>Adaptation from clicks alone</h3>
+      <p>CMAS can build its vectors from clicks without any ground-truth masks. With a single click per support image it improves five of six
+      datasets, by up to 19.8 Dice points, and recovers up to 83% of the gain of oracle clicks at test time, while inference stays text-only.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Text-only inference</th><th>RAOS</th><th>TF2</th><th>MRISeg.</th><th>MoCA</th><th>LVIS</th><th>iSAID</th></tr></thead>
+        <tbody>
+          <tr><td>Text prompt</td><td>0.553</td><td>0.016</td><td>0.463</td><td>0.351</td><td>0.545</td><td>0.389</td></tr>
+          <tr class="ours"><td>CMAS, 1 click/image</td><td>0.552</td><td>0.063</td><td>0.486</td><td>0.549</td><td>0.676</td><td>0.537</td></tr>
+          <tr class="ours"><td>CMAS, 5 clicks/image</td><td>0.568</td><td>0.120</td><td>0.435</td><td>0.583</td><td>0.686</td><td>0.585</td></tr>
+        </tbody></table></div>
+      <p class="tcap">Mean of three random click draws (the paper also gives standard deviations and the oracle).</p>
+    </div>
+    <div class="block">
+      <h3>Test-time adaptation &amp; other models</h3>
+      <p>Three clicks on <b>one</b> slice or frame of a new volume or video give a case-specific steering vector for the remaining slices/frames,
+      with no prior adaptation data: Dice improves on all four volume/video datasets.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Dice</th><th>RAOS</th><th>TF2</th><th>MRISeg.</th><th>MoCA</th></tr></thead>
+        <tbody>
+          <tr><td>Text prompt</td><td>0.553</td><td>0.016</td><td>0.463</td><td>0.351</td></tr>
+          <tr class="ours"><td>Test-time CMAS</td><td>0.587</td><td>0.201</td><td>0.517</td><td>0.573</td></tr>
+        </tbody></table></div>
+      <p style="margin-top:10px">Beyond SAM3-based models, CMAS also improves <b>GLEE</b>: MoCA-Mask 0.167 &rarr; 0.287, LVIS-92i 0.544 &rarr; 0.576,
+      iSAID-5i 0.122 &rarr; 0.394.</p>
+    </div>
+  </div>
+
+  <h3>Limitations</h3>
+  <p class="narrow small muted">With few supports, Auto-Steering's leave-one-out estimate can be noisy: with five clicks per support image instead of masks,
+  CMAS reaches only 0.435 Dice on MRISegmenter, below text-only prompting (0.463). Cross-modal steering only helps when the extra modality
+  helps (MoCA-Mask, text &rarr; click). The vectors come from positive clicks and target missed structures; they do not explicitly suppress false
+  positives. The examples below include such failures.</p>
+</div></section>
+
+<section id="examples"><div class="wrap">
+  <h2><span class="kicker">Interactive examples</span>See the fixes, and the failures</h2>
+  <p class="narrow">Each viewer shows <b>ground truth | text-only | text + CMAS</b> side by side (slice slider, overlay opacity, outline mode, per-class
+  Dice; medical cases add a coronal view and linked 3D surface meshes). Everything runs offline in the browser; pages are 0.2&ndash;12 MB.
+  Medical and MoCA-Mask cases use the paper's saved test predictions; the LVIS-92i / iSAID-5i pages use the released code and steering packs.</p>
+  <p class="notice"><b>Selection.</b> Cases are <b>selected to illustrate typical fixes</b>, not to represent the average gain; averages are in the
+  paper (table above). Every domain also has a <span style="color:var(--bad);font-weight:600">failure case</span>, and the
+  <span style="color:var(--link);font-weight:600">random</span> galleries are unfiltered seeded samples within the released classes.</p>
+  
+  <div class="ex-group"><h3>Medical volumes (Medical-SAM3)</h3><p class="muted small">CT, MRI and dental CBCT test volumes: axial/coronal slices, per-class 3D Dice, linked 3D surface meshes.</p>
+    <div class="cards">
+      <a class="card" href="examples/raos_femoral_heads.html">
+        <img loading="lazy" src="examples/thumbs/raos_femoral_heads.jpg" alt="Ground truth, text-only and text + CMAS overlays: RAOS (abdominal CT, 19 classes)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>RAOS CT · femoral heads swapped</h4>
+          <p>Left/right confusion of the femoral heads fixed (0.00 / 0.02 &rarr; 0.90 / 0.81).</p>
+          <div class="meta"><span class="badge fix">typical fix</span>
+            <span>case-mean Dice <span class="dice">0.60<span class="arr">&rarr;</span>0.71</span> &middot; 10.4 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/raos_median_case.html">
+        <img loading="lazy" src="examples/thumbs/raos_median_case.jpg" alt="Ground truth, text-only and text + CMAS overlays: RAOS (abdominal CT, 19 classes)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>RAOS CT · a median case</h4>
+          <p>A median case: femoral heads 0.00 / 0.11 &rarr; 0.76 / 0.77; false positives on absent classes remain.</p>
+          <div class="meta"><span class="badge typical">typical</span>
+            <span>case-mean Dice <span class="dice">0.58<span class="arr">&rarr;</span>0.67</span> &middot; 9.4 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/mriseg_pelvic_muscles.html">
+        <img loading="lazy" src="examples/thumbs/mriseg_pelvic_muscles.jpg" alt="Ground truth, text-only and text + CMAS overlays: MRISegmenter (venous-phase MRI, 33 classes)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>MRISegmenter MRI · pelvic muscles</h4>
+          <p>Missed pelvic muscles and hips recovered (&asymp;0 &rarr; 0.50&ndash;0.75).</p>
+          <div class="meta"><span class="badge fix">typical fix</span>
+            <span>case-mean Dice <span class="dice">0.42<span class="arr">&rarr;</span>0.53</span> &middot; 6.0 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/mriseg_failure.html">
+        <img loading="lazy" src="examples/thumbs/mriseg_failure.jpg" alt="Ground truth, text-only and text + CMAS overlays: MRISegmenter (venous-phase MRI, 33 classes)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>MRISegmenter MRI · failure case</h4>
+          <p>Failure: portal vein worse (0.41 &rarr; 0.28); CMAS adds false positives on absent classes.</p>
+          <div class="meta"><span class="badge failure">failure case</span>
+            <span>case-mean Dice <span class="dice">0.53<span class="arr">&rarr;</span>0.50</span> &middot; 5.1 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/toothfairy2_pharynx_jaw.html">
+        <img loading="lazy" src="examples/thumbs/toothfairy2_pharynx_jaw.jpg" alt="Ground truth, text-only and text + CMAS overlays: ToothFairy2 (dental CBCT, 14 label groups)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>ToothFairy2 CBCT · pharynx and jaw</h4>
+          <p>Near-empty text-only output; pharynx (0.12 &rarr; 0.92) and lower jawbone (0.00 &rarr; 0.45) recovered.</p>
+          <div class="meta"><span class="badge fix">typical fix</span>
+            <span>case-mean Dice <span class="dice">0.02<span class="arr">&rarr;</span>0.20</span> &middot; 8.3 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/toothfairy2_failure.html">
+        <img loading="lazy" src="examples/thumbs/toothfairy2_failure.jpg" alt="Ground truth, text-only and text + CMAS overlays: ToothFairy2 (dental CBCT, 14 label groups)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>ToothFairy2 CBCT · failure case</h4>
+          <p>Failure: pharynx lost (0.46 &rarr; 0.00); upper jawbone stays near 0 (0.10).</p>
+          <div class="meta"><span class="badge failure">failure case</span>
+            <span>case-mean Dice <span class="dice">0.04<span class="arr">&rarr;</span>0.09</span> &middot; 12.2 MB</span></div>
+        </div>
+      </a>
+    </div></div>
+  <div class="ex-group"><h3>Camouflaged animals in video (SAM3, MoCA-Mask)</h3><p class="muted small">Every annotated frame segmented independently with the prompt &ldquo;animal&rdquo;; play button and per-frame Dice.</p>
+    <div class="cards">
+      <a class="card" href="examples/moca_copperhead_snake.html">
+        <img loading="lazy" src="examples/thumbs/moca_copperhead_snake.jpg" alt="Ground truth, text-only and text + CMAS overlays: MoCA-Mask: copperhead_snake">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>MoCA-Mask: copperhead_snake</h4>
+          <p>Camouflaged snake missed by text-only on most frames.</p>
+          <div class="meta"><span class="badge fix">typical fix</span>
+            <span>video Dice <span class="dice">0.04<span class="arr">&rarr;</span>0.73</span> &middot; 3.6 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/moca_flower_crab_spider_1.html">
+        <img loading="lazy" src="examples/thumbs/moca_flower_crab_spider_1.jpg" alt="Ground truth, text-only and text + CMAS overlays: MoCA-Mask: flower_crab_spider_1">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>MoCA-Mask: flower_crab_spider_1</h4>
+          <p>Text-only never finds the spider; CMAS does on most frames.</p>
+          <div class="meta"><span class="badge fix">typical fix</span>
+            <span>video Dice <span class="dice">0.00<span class="arr">&rarr;</span>0.86</span> &middot; 1.0 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/moca_black_cat_1.html">
+        <img loading="lazy" src="examples/thumbs/moca_black_cat_1.jpg" alt="Ground truth, text-only and text + CMAS overlays: MoCA-Mask: black_cat_1">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>MoCA-Mask: black_cat_1</h4>
+          <p>A moderate gain, closer to the dataset average.</p>
+          <div class="meta"><span class="badge typical">typical</span>
+            <span>video Dice <span class="dice">0.32<span class="arr">&rarr;</span>0.45</span> &middot; 1.4 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/moca_pygmy_seahorse_0.html">
+        <img loading="lazy" src="examples/thumbs/moca_pygmy_seahorse_0.jpg" alt="Ground truth, text-only and text + CMAS overlays: MoCA-Mask: pygmy_seahorse_0">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>MoCA-Mask: pygmy_seahorse_0</h4>
+          <p>Failure: the seahorse stays missed with and without CMAS.</p>
+          <div class="meta"><span class="badge failure">failure case</span>
+            <span>video Dice <span class="dice">0.00<span class="arr">&rarr;</span>0.00</span> &middot; 0.7 MB</span></div>
+        </div>
+      </a>
+    </div></div>
+  <div class="ex-group"><h3>Long-tail objects and aerial images (SAM3)</h3><p class="muted small">Random galleries (incl. absent-class prompts) and the queries where text-only SAM3 returns nothing.</p>
+    <div class="cards">
+      <a class="card" href="examples/lvis_gallery.html">
+        <img loading="lazy" src="examples/thumbs/lvis_gallery.jpg" alt="Ground truth, text-only and text + CMAS overlays: LVIS-92i gallery">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>LVIS-92i gallery</h4>
+          <p>22 random queries + 10 absent-class images of 5 classes. Includes failures: 3 queries stay or become empty, 0 get worse.</p>
+          <div class="meta"><span class="badge random">random sample</span>
+            <span>mean Dice (present) <span class="dice">0.08<span class="arr">&rarr;</span>0.79</span> &middot; 1.2 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/lvis_text_empty.html">
+        <img loading="lazy" src="examples/thumbs/lvis_text_empty.jpg" alt="Ground truth, text-only and text + CMAS overlays: LVIS-92i: text-only misses">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>LVIS-92i: text-only misses</h4>
+          <p>16 queries selected because text-only output is empty; 15 recovered by CMAS, 1 stay empty.</p>
+          <div class="meta"><span class="badge selected">selected</span>
+            <span>mean Dice <span class="dice">0.00<span class="arr">&rarr;</span>0.90</span> &middot; 0.6 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/isaid_gallery.html">
+        <img loading="lazy" src="examples/thumbs/isaid_gallery.jpg" alt="Ground truth, text-only and text + CMAS overlays: iSAID-5i gallery">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>iSAID-5i gallery</h4>
+          <p>24 random queries + 6 absent-class images of 3 classes. Includes failures: 13 queries stay or become empty, 4 get worse.</p>
+          <div class="meta"><span class="badge random">random sample</span>
+            <span>mean Dice (present) <span class="dice">0.10<span class="arr">&rarr;</span>0.35</span> &middot; 0.6 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/isaid_text_empty.html">
+        <img loading="lazy" src="examples/thumbs/isaid_text_empty.jpg" alt="Ground truth, text-only and text + CMAS overlays: iSAID-5i: text-only misses">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>text-only</span><span>text + CMAS</span></div>
+        <div class="body">
+          <h4>iSAID-5i: text-only misses</h4>
+          <p>12 queries selected because text-only output is empty; 11 recovered by CMAS, 1 stay empty.</p>
+          <div class="meta"><span class="badge selected">selected</span>
+            <span>mean Dice <span class="dice">0.00<span class="arr">&rarr;</span>0.89</span> &middot; 0.2 MB</span></div>
+        </div>
+      </a>
+    </div></div>
+  <div class="ex-group"><h3>Steering into click-only inference (text &rarr; click)</h3><p class="muted small">The reverse direction (paper Supplement S4.3): vectors from extra text guidance added to click-only inference, no class name at test time. Panels: ground truth, click only, click + CMAS, text + click; the same click in every panel.</p>
+    <div class="cards">
+      <a class="card" href="examples/reverse_raos_median.html">
+        <img loading="lazy" src="examples/thumbs/reverse_raos_median.jpg" alt="Ground truth, click only and click + CMAS overlays: RAOS (abdominal CT, 19 classes)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>click only</span><span>click + CMAS</span></div>
+        <div class="body">
+          <h4>RAOS CT · click → click + CMAS (median case)</h4>
+          <p>Median case. Text + click swaps the femoral heads (0.29 / 0.17); click + CMAS keeps both on the correct side (0.89 / 0.90).</p>
+          <div class="meta"><span class="badge typical">typical</span>
+            <span>case-mean Dice <span class="dice">0.72<span class="arr">&rarr;</span>0.77</span> &middot; text + click 0.70 &middot; 10.3 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/reverse_raos_failure.html">
+        <img loading="lazy" src="examples/thumbs/reverse_raos_failure.jpg" alt="Ground truth, click only and click + CMAS overlays: RAOS (abdominal CT, 19 classes)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>click only</span><span>click + CMAS</span></div>
+        <div class="body">
+          <h4>RAOS CT · click → click + CMAS (failure)</h4>
+          <p>Failure: the vector makes this volume worse (pancreas 0.72 &rarr; 0.40, left femoral head 0.84 &rarr; 0.63).</p>
+          <div class="meta"><span class="badge failure">failure case</span>
+            <span>case-mean Dice <span class="dice">0.71<span class="arr">&rarr;</span>0.67</span> &middot; text + click 0.70 &middot; 9.7 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/reverse_mriseg_median.html">
+        <img loading="lazy" src="examples/thumbs/reverse_mriseg_median.jpg" alt="Ground truth, click only and click + CMAS overlays: MRISegmenter (venous-phase MRI, 33 classes)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>click only</span><span>click + CMAS</span></div>
+        <div class="body">
+          <h4>MRISegmenter MRI · click → click + CMAS</h4>
+          <p>Median case. Back muscles and lungs gain with the vector; text + click stays ahead on this dataset.</p>
+          <div class="meta"><span class="badge typical">typical</span>
+            <span>case-mean Dice <span class="dice">0.68<span class="arr">&rarr;</span>0.72</span> &middot; text + click 0.74 &middot; 6.1 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/reverse_toothfairy2_median.html">
+        <img loading="lazy" src="examples/thumbs/reverse_toothfairy2_median.jpg" alt="Ground truth, click only and click + CMAS overlays: ToothFairy2 (dental CBCT, 14 label groups)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>click only</span><span>click + CMAS</span></div>
+        <div class="body">
+          <h4>ToothFairy2 CBCT · click → click + CMAS</h4>
+          <p>Lower jawbone recovered with the vector (0.44 &rarr; 0.75); upper jawbone lost (0.51 &rarr; 0.00).</p>
+          <div class="meta"><span class="badge typical">typical</span>
+            <span>case-mean Dice <span class="dice">0.43<span class="arr">&rarr;</span>0.55</span> &middot; text + click 0.38 &middot; 8.4 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/reverse_lvis.html">
+        <img loading="lazy" src="examples/thumbs/reverse_lvis.jpg" alt="Ground truth, click only and click + CMAS overlays: LVIS-92i reverse steering">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>click only</span><span>click + CMAS</span></div>
+        <div class="body">
+          <h4>LVIS-92i · click → click + CMAS</h4>
+          <p>Stratified sample: 8 pairs the vector improves, 4 it worsens (dataset ratio 262 : 140), plus a histogram of all changes. Dataset: click 0.679 &rarr; 0.697.</p>
+          <div class="meta"><span class="badge random">random sample</span>
+            <span>mean Dice of shown pairs <span class="dice">0.60<span class="arr">&rarr;</span>0.78</span> &middot; text + click 0.75 &middot; 0.5 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/reverse_isaid.html">
+        <img loading="lazy" src="examples/thumbs/reverse_isaid.jpg" alt="Ground truth, click only and click + CMAS overlays: iSAID-5i reverse steering">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>click only</span><span>click + CMAS</span></div>
+        <div class="body">
+          <h4>iSAID-5i · click → click + CMAS</h4>
+          <p>Stratified sample: 8 pairs the vector improves, 4 it worsens (dataset ratio 1730 : 970), plus a histogram of all changes. Dataset: click 0.562 &rarr; 0.593.</p>
+          <div class="meta"><span class="badge random">random sample</span>
+            <span>mean Dice of shown pairs <span class="dice">0.47<span class="arr">&rarr;</span>0.64</span> &middot; text + click 0.56 &middot; 0.3 MB</span></div>
+        </div>
+      </a>
+      <a class="card" href="examples/reverse_moca_failure.html">
+        <img loading="lazy" src="examples/thumbs/reverse_moca_failure.jpg" alt="Ground truth, click only and click + CMAS overlays: MoCA-Mask reverse steering (failure)">
+        <div class="thumb-labels" aria-hidden="true"><span>ground truth</span><span>click only</span><span>click + CMAS</span></div>
+        <div class="body">
+          <h4>MoCA-Mask · click → click + CMAS (failure)</h4>
+          <p>Failure: the vector adds large wrong regions (arctic fox 0.92 &rarr; 0.58); dataset 0.659 &rarr; 0.592. Three videos incl. the largest gain.</p>
+          <div class="meta"><span class="badge failure">failure case</span>
+            <span>video Dice (3 videos) <span class="dice">0.86<span class="arr">&rarr;</span>0.71</span> &middot; text + click 0.89 &middot; 2.3 MB</span></div>
+        </div>
+      </a>
+    </div></div>
+  <div class="ex-group"><h3>Inside the method</h3><p class="muted small">Diagnostics of what CMAS steers towards (test data, not used for any selection).</p>
+    <div class="cards">
+      <a class="card" href="examples/click_space.html">
+        <img loading="lazy" src="examples/thumbs/click_space.jpg" alt="3D scatter of real negative, real positive and optimised click tokens: Click space (prompt-token embeddings, RAOS + ToothFairy2 test slices)">
+        
+        <div class="body">
+          <h4>Where click optimisation moves the click</h4>
+          <p>Where click optimisation moves the click: optimised click tokens stay on the positive side but move 20&ndash;34 units perpendicular to the positive&ndash;negative axis (vs. 1.5&ndash;1.7 along it), 5.6&ndash;6.4&times; the spacing of real clicks away from the nearest one (diagnostic on test slices, not used for method selection).</p>
+          <div class="meta"><span class="badge diagnostic">diagnostic</span>
+            <span>1.1 MB</span></div>
+        </div>
+      </a>
+    </div></div>
+  
+</div></section>
+
+<section id="demo" class="alt"><div class="wrap">
+  <h2><span class="kicker">Demo</span>Try it on your own data</h2>
+  <p class="narrow">The code release includes a Gradio demo for SAM3 (images and videos) and Medical-SAM3 (3D CT / MRI / CBCT volumes): build a steering
+  pack from a few annotated examples, apply it with text-only prompts, adapt a single case from a few clicks, or steer click-only inference with text.
+  <a href="https://github.com/ZhNuren/cmas-release">Code on GitHub</a>.</p>
+  <div class="shots">
+    <figure class="shot"><a href="assets/img/demo/medical_paper_examples.jpg"><img loading="lazy" src="assets/img/demo/thumb_medical_paper_examples.jpg" alt="Demo screenshot: precomputed paper examples on RAOS, 3D view and slices of ground truth, text-only and text + CMAS."></a>
+      <figcaption>Medical: the paper's precomputed test outputs, 3D view and slices (RAOS femoral heads).</figcaption></figure>
+    <figure class="shot"><a href="assets/img/demo/medical_own_target_build_pack.jpg"><img loading="lazy" src="assets/img/demo/thumb_medical_own_target_build_pack.jpg" alt="Demo screenshot: building a steering pack for an own target from annotated volumes."></a>
+      <figcaption>Medical, your own target: build a steering pack from a few annotated slices.</figcaption></figure>
+    <figure class="shot"><a href="assets/img/demo/medical_own_target_tta.jpg"><img loading="lazy" src="assets/img/demo/thumb_medical_own_target_tta.jpg" alt="Demo screenshot: test-time adaptation of a medical volume from clicks on one slice."></a>
+      <figcaption>Medical test-time adaptation: clicks on one slice steer the rest of the volume.</figcaption></figure>
+    <figure class="shot"><a href="assets/img/demo/medical_annotate_reverse.jpg"><img loading="lazy" src="assets/img/demo/thumb_medical_annotate_reverse.jpg" alt="Demo screenshot: annotate with clicks, reverse steering."></a>
+      <figcaption>Annotate with clicks: reverse (text &rarr; click) steering.</figcaption></figure>
+    <figure class="shot"><a href="assets/img/demo/natural_video_build_pack.jpg"><img loading="lazy" src="assets/img/demo/thumb_natural_video_build_pack.jpg" alt="Demo screenshot: building a steering pack from support videos."></a>
+      <figcaption>Video: build a pack from support videos.</figcaption></figure>
+    <figure class="shot"><a href="assets/img/demo/natural_video_with_pack.jpg"><img loading="lazy" src="assets/img/demo/thumb_natural_video_with_pack.jpg" alt="Demo screenshot: applying a steering pack to a video frame by frame."></a>
+      <figcaption>Video: apply a steering pack frame by frame.</figcaption></figure>
+    <figure class="shot"><a href="assets/img/demo/natural_video_tta.jpg"><img loading="lazy" src="assets/img/demo/thumb_natural_video_tta.jpg" alt="Demo screenshot: test-time adaptation on a video from clicks on one frame, with per-frame area plot."></a>
+      <figcaption>Video test-time adaptation from clicks on one frame.</figcaption></figure>
+  </div>
+</div></section>
+
+<section id="bibtex-sec"><div class="wrap">
+  <h2><span class="kicker">Citation</span>BibTeX</h2>
+  
+  <div class="bib">
+    <button class="copy" id="copy-bib" type="button">Copy</button>
+<pre id="bibtex">@article{zhaksylyk2026cmas,
+  title   = {Steering to the Point: Cross-Modal Activation Steering for
+             Few-Shot Adaptation of Promptable Segmentation Models},
+  author  = {Zhaksylyk, Nuren and Christmann, Philipp and Fritz, Mario},
+  journal = {arXiv preprint arXiv:XXXX.XXXXX},
+  year    = {2026}
+}</pre>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <p class="clinical">Research use only &mdash; not for clinical use.</p>
+  <p>Medical images, label maps, predictions and 3D meshes on this site illustrate research results; they are not suitable for diagnosis or treatment.</p>
+  <h4>Models</h4>
+  <ul>
+    <li>SAM3 (Carion et al., ICLR 2026), <a href="https://github.com/facebookresearch/sam3">facebookresearch/sam3</a>; Medical-SAM3 V2 (Jiang et al., 2026), <a href="https://github.com/AIM-Research-Lab/Medical-SAM3">AIM-Research-Lab/Medical-SAM3</a>.</li>
+  </ul>
+  <h4>Datasets shown (credits and terms)</h4>
+  <ul>
+    
+    <li>RAOS (Luo et al., MICCAI 2024), built on WORD (Luo et al., MedIA 2022): academic research use only, no commercial use.</li>
+    <li>MRISegmenter (Zhuang et al., Radiology 2025): MRI volumes courtesy of the NIH Clinical Center.</li>
+    <li>ToothFairy2 (Bolelli et al.): CC BY-NC-SA 4.0 / CC BY-SA 4.0 (sources differ).</li>
+    <li>MoCA-Mask (Cheng et al., CVPR 2022), derived from MoCA (Lamdouar et al., ACCV 2020, CC BY 4.0); videos remain the property of their owners.</li>
+    <li>LVIS v1 (Gupta et al., CVPR 2019) annotations, CC BY 4.0, on COCO 2017 images (Flickr; licence per image, shown in the viewer).</li>
+    <li>iSAID (Waqas Zamir et al., CVPRW 2019) on DOTA v1.0 images (Xia et al., CVPR 2018), iSAID-5i split of SDM-Net (Yao et al., TGRS 2021): academic use only.</li>
+    <li>Paper figures and demo screenshots also show images from these datasets (and the demo video screenshot a DAVIS clip).</li>
+    
+  </ul>
+  <h4>Software</h4>
+  <ul><li>3D viewer: <a href="assets/vendor/LICENSE-plotly.js.txt">plotly.js</a> gl3d bundle v2.35.2 (MIT, &copy; Plotly, Inc.), vendored with its
+    <a href="assets/vendor/plotly-gl3d.min.js.LICENSE.txt">third-party notices</a>. Fonts: Inter and Source Serif 4 (SIL OFL) via Google Fonts, optional.</li></ul>
+  <p style="margin-top:18px">&copy; 2026 the authors. Page source: plain HTML/CSS/JS, no tracking.</p>
+</div></footer>
+
+<script src="assets/js/site.js?v=20261125"></script>
+</body>
+</html>
